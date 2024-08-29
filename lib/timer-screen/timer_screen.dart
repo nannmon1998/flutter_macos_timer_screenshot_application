@@ -4,7 +4,9 @@ import 'dart:typed_data';
 import 'package:camera_macos/camera_macos.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_image_stack/flutter_image_stack.dart';
 import 'package:screenshot/screenshot.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/ticker.dart';
 import 'bloc/timer_bloc.dart';
 
@@ -119,29 +121,49 @@ class TimerScreenState extends State<TimerScreen> {
                       ),
                     ],
                   ),
-                  (state.screenshot != null)
-                      ? Positioned(
-                          top: 4.0,
-                          right: 4.0,
-                          child: Container(
-                            decoration: ShapeDecoration(
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8.0),
-                                side: const BorderSide(
-                                  color: Colors.black,
-                                  width: 4.0,
+                  if(state is CaptureScreenshot)
+                    (state.lastPictureTakenList != null)
+                        ? Positioned(
+                      top: 4.0,
+                      right: 4.0,
+                      child: SizedBox(
+                        width: 200,
+                        height: 500,
+                        child: ListView.builder(
+                            itemCount: state.lastPictureTakenList!.length,
+                            itemBuilder: (context,index) =>
+                                Align(
+                                  widthFactor: 0.1,
+                                  heightFactor: 0.1,
+                                  child: InkWell(
+                                    onTap: () async {
+                                      Uri imageUri = Uri.file(state.lastPictureTakenList![index]);
+                                      if (await canLaunchUrl(imageUri)) {
+                                        await launchUrl(imageUri);
+                                      }
+                                      },
+                                    child: Container(
+                                      decoration: ShapeDecoration(
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(8.0),
+                                          side: const BorderSide(
+                                            color: Colors.black,
+                                            width: 1.0,
+                                          ),
+                                        ),
+                                      ),
+                                      child: Image.asset(
+                                        state.lastPictureTakenList![index],
+                                        height: 100,
+                                        width: 140,
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
-                            child: Image.memory(
-                              state.screenshot!,
-                              height: 100,
-                              width: 140,
-                              fit: BoxFit.fill,
-                            ),
-                          ),
-                        )
-                      : const SizedBox.shrink(),
+                        ),
+                      )
+                    )
+                        : const SizedBox.shrink(),
                 ],
               );
             },

@@ -1,10 +1,14 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:camera_macos/camera_macos.dart';
 import 'package:equatable/equatable.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:screenshot/screenshot.dart';
 import '../../models/ticker.dart';
+import 'package:path/path.dart' as pathJoiner;
 
 part 'timer_event.dart';
 
@@ -17,6 +21,16 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
 
   // to listen to the ticker stream
   StreamSubscription<int>? _tickerSubscription;
+
+  Future<String> get imageFilePath async =>
+      pathJoiner.join(
+          (await getApplicationDocumentsDirectory()).path,
+          "P_${DateTime.now().year}${DateTime.now().month}${DateTime.now().day}_${
+              DateTime.now().hour}${DateTime.now().minute}${DateTime.now().
+          second}.${selectedPictureFormat.name.replaceAll("PictureFormat.", "")}");
+  File? lastPictureTaken;
+  PictureFormat selectedPictureFormat = PictureFormat.png;
+  List<String> lastPictureTakenList = [];
 
   TimerBloc(this._screenshotController,
       {required Ticker ticker})
@@ -50,47 +64,58 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
 
     //capture screenshot
     final screenshot = await _screenshotController.capture();
-    emit(CaptureScreenshot(event.duration, screenshot!));
+    savePicture(screenshot!);
+    emit(CaptureScreenshot(event.duration, lastPictureTakenList));
 
+    //capture headshot
     List<CameraMacOSDevice> videoDevices =
     await CameraMacOS.instance.listDevices(
       deviceType: CameraMacOSDeviceType.video,
     );
     String selectedVideoDevice = videoDevices.first.deviceId;
-    emit(CaptureHeadshot(event.duration, screenshot, selectedVideoDevice));
+    emit(CaptureHeadshot(event.duration, selectedVideoDevice));
   }
 
   void _onTicked(TimerTicked event, Emitter<TimerState> emit) async {
     emit(event.duration > 0
         ? TimerRunInProgress(event.duration)
-        // triggers the TimerRunInProgress state
-
         : const TimerRunComplete());
-    // triggers TimerRunComplete state
 
-    // not a good solution
     final screenshot = await _screenshotController.capture();
-    emit(CaptureScreenshot(event.duration, screenshot!));
+    savePicture(screenshot!);
+    emit(CaptureScreenshot(event.duration, lastPictureTakenList));
   }
 
   void _onPaused(TimerPaused event, Emitter<TimerState> emit) {
     // As the timer pause, we should pause the subscription also
     _tickerSubscription?.pause();
     emit(TimerRunPause(state.duration));
-    // triggers the TimerRunPause state
   }
 
   void _onResumed(TimerResumed event, Emitter<TimerState> emit) {
     // As the timer resume, we must let the subscription resume also
     _tickerSubscription?.resume();
     emit(TimerRunInProgress(state.duration));
-    // triggers the TimerRunInProgress state
   }
 
   void _onReset(TimerReset event, Emitter<TimerState> emit) {
     // Timer counting finished, so we must cancel the subscription
     _tickerSubscription?.cancel();
     emit(const TimerInitial(_duration));
-    //triggers the TimerInitial state
   }
+
+  Future<void> savePicture(Uint8List photoBytes) async {
+      String filename = await imageFilePath;
+      debugPrint(filename);
+      File f = File(filename);
+      if (f.existsSync()) {
+        f.deleteSync(recursive: true);
+      }
+      f.createSync(recursive: true);
+      f.writeAsBytesSync(photoBytes);
+      lastPictureTaken = f;
+      String filePath = f.path;
+        lastPictureTakenList.add(filePath);
+  }
+
 }
