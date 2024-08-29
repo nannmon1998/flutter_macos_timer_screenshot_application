@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:typed_data';
-import 'package:camera/camera.dart';
 import 'package:camera_macos/camera_macos.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -53,6 +52,12 @@ class TimerBloc extends Bloc<TimerEvent, TimerState> {
     final screenshot = await _screenshotController.capture();
     emit(CaptureScreenshot(event.duration, screenshot!));
 
+    List<CameraMacOSDevice> videoDevices =
+    await CameraMacOS.instance.listDevices(
+      deviceType: CameraMacOSDeviceType.video,
+    );
+    String selectedVideoDevice = videoDevices.first.deviceId;
+    emit(CaptureHeadshot(event.duration, screenshot, selectedVideoDevice));
   }
 
   void _onTicked(TimerTicked event, Emitter<TimerState> emit) async {

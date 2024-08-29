@@ -39,7 +39,6 @@ dependencies:
   equatable: ^2.0.5
   screenshot: ^3.0.0
   camera_macos:
-  camera: ^0.11.0+2
   image: ^4.2.0
 
 dev_dependencies:

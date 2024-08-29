@@ -3,8 +3,9 @@ part of 'timer_bloc.dart';
 abstract class TimerState extends Equatable {
   final int duration;
   final Uint8List? screenshot;
+  final String? headshot;
 
-  const TimerState(this.duration, {this.screenshot});
+  const TimerState(this.duration, {this.screenshot,this.headshot});
 
   @override
   // state instants compare each other by duration
@@ -26,6 +27,11 @@ class TimerRunPause extends TimerState {
 class CaptureScreenshot extends TimerState {
   const CaptureScreenshot(int duration, Uint8List screenshot)
       : super(duration, screenshot: screenshot);
+}
+
+class CaptureHeadshot extends TimerState {
+  const CaptureHeadshot(int duration, Uint8List screenshot, String headShot)
+      : super(duration, screenshot: screenshot, headshot: headShot);
 }
 
 
