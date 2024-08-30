@@ -41,7 +41,6 @@ dependencies:
   camera_macos:
   path: ^1.9.0
   path_provider: ^2.0.11
-  flutter_image_stack: ^0.0.7
   url_launcher: ^6.1.14
 
 

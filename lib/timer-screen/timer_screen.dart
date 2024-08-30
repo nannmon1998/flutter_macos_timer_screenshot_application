@@ -4,7 +4,6 @@ import 'dart:typed_data';
 import 'package:camera_macos/camera_macos.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_image_stack/flutter_image_stack.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/ticker.dart';
@@ -19,28 +18,31 @@ class TimerScreen extends StatefulWidget {
 
 class TimerScreenState extends State<TimerScreen> {
   final ScreenshotController _screenshotController = ScreenshotController();
-  CameraMacOSController? macOSController;
+  late CameraMacOSController macOSController;
   late CameraMacOSMode cameraMode;
   Uint8List? lastImagePreviewData;
   GlobalKey cameraKey = GlobalKey();
   String? selectedVideoDevice;
-  PictureResolution selectedPictureResolution = PictureResolution.max;
-  PictureFormat selectedPictureFormat = PictureFormat.png;
-  CameraOrientation selectedOrientation = CameraOrientation.orientation0deg;
   File? lastPictureTaken;
-
   List<CameraMacOSDevice> audioDevices = [];
   String? selectedAudioDevice;
-
-  bool enableAudio = true;
-  bool enableTorch = false;
-  bool usePlatformView = false;
-  bool streamImage = false;
 
   @override
   void initState() {
     super.initState();
     cameraMode = CameraMacOSMode.photo;
+    CameraMacOSPlatform.instance
+        .initialize(
+        cameraMacOSMode: CameraMacOSMode.photo,
+        enableAudio: false,
+        resolution: PictureResolution.max,
+        pictureFormat: PictureFormat.png,
+        orientation: CameraOrientation.orientation0deg)
+        .then((value) {
+      if (value != null) {
+        macOSController = CameraMacOSController(value);
+      }
+    });
   }
 
   @override
@@ -57,38 +59,12 @@ class TimerScreenState extends State<TimerScreen> {
           ),
           body: BlocBuilder<TimerBloc, TimerState>(
             builder: (context, state) {
-              debugPrint("state $state");
               return Stack(
                 children: [
                   Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: <Widget>[
                       Text("Time: ${state.duration} seconds"),
-                      const SizedBox(height: 20),
-                      SizedBox(
-                          width: (size.width * 0.5),
-                          height: (size.width * 0.5) * (9 / 16),
-                          child: CameraMacOSView(
-                            key: cameraKey,
-                            deviceId: selectedVideoDevice,
-                            fit: BoxFit.fitWidth,
-                            cameraMode: CameraMacOSMode.photo,
-                            resolution: selectedPictureResolution,
-                            pictureFormat: selectedPictureFormat,
-                            orientation: selectedOrientation,
-                            onCameraInizialized:
-                                (CameraMacOSController controller) {
-                              setState(() {
-                                macOSController = controller;
-                              });
-                            },
-                            onCameraDestroyed: () {
-                              return const Text("Camera Destroyed!");
-                            },
-                            toggleTorch: enableTorch ? Torch.on : Torch.off,
-                            enableAudio: enableAudio,
-                            usePlatformView: usePlatformView,
-                          )),
                       const SizedBox(height: 20),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -106,7 +82,7 @@ class TimerScreenState extends State<TimerScreen> {
                             onPressed: () {
                               context
                                   .read<TimerBloc>()
-                                  .add(const TimerPaused());
+                                  .add(TimerPaused(state.duration));
                             },
                             child: const Text("Stop Timer"),
                           ),
@@ -121,8 +97,7 @@ class TimerScreenState extends State<TimerScreen> {
                       ),
                     ],
                   ),
-                  if(state is CaptureScreenshot)
-                    (state.lastPictureTakenList != null)
+                    (state.screenshotList != null)
                         ? Positioned(
                       top: 4.0,
                       right: 4.0,
@@ -130,14 +105,13 @@ class TimerScreenState extends State<TimerScreen> {
                         width: 200,
                         height: 500,
                         child: ListView.builder(
-                            itemCount: state.lastPictureTakenList!.length,
+                            itemCount: state.screenshotList!.length,
                             itemBuilder: (context,index) =>
                                 Align(
-                                  widthFactor: 0.1,
-                                  heightFactor: 0.1,
+                                  heightFactor: 0.048,
                                   child: InkWell(
                                     onTap: () async {
-                                      Uri imageUri = Uri.file(state.lastPictureTakenList![index]);
+                                      Uri imageUri = Uri.file(state.screenshotList![index]);
                                       if (await canLaunchUrl(imageUri)) {
                                         await launchUrl(imageUri);
                                       }
@@ -153,15 +127,56 @@ class TimerScreenState extends State<TimerScreen> {
                                         ),
                                       ),
                                       child: Image.asset(
-                                        state.lastPictureTakenList![index],
-                                        height: 100,
-                                        width: 140,
+                                        state.screenshotList![index],
+                                        height: 220,
+                                        width: 400,
                                       ),
                                     ),
                                   ),
                                 ),
                         ),
                       )
+                    )
+                        : const SizedBox.shrink(),
+                    (state.headshotList != null)
+                        ? Positioned(
+                        top: 4.0,
+                        left: 4.0,
+                        child: SizedBox(
+                          width: 200,
+                          height: 500,
+                          child: ListView.builder(
+                            itemCount: state.headshotList!.length,
+                            itemBuilder: (context,index) =>
+                                Align(
+                                  heightFactor: 0.048,
+                                  child: InkWell(
+                                    onTap: () async {
+                                      Uri imageUri = Uri.file(state.headshotList![index]);
+                                      if (await canLaunchUrl(imageUri)) {
+                                        await launchUrl(imageUri);
+                                      }
+                                    },
+                                    child: Container(
+                                      decoration: ShapeDecoration(
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(8.0),
+                                          side: const BorderSide(
+                                            color: Colors.black,
+                                            width: 1.0,
+                                          ),
+                                        ),
+                                      ),
+                                      child: Image.asset(
+                                        state.headshotList![index],
+                                        height: 220,
+                                        width: 400,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                          ),
+                        )
                     )
                         : const SizedBox.shrink(),
                 ],
